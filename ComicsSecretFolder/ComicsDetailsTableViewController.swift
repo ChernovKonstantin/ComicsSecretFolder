@@ -10,60 +10,56 @@ import UIKit
 class ComicsDetailsTableViewController: UITableViewController {
     
     var model = FetchingData()
+    var listForTableView = [Comics]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.urlRequest(url: model.urlForRequest, for: model.currentURLRequestIndex)
+        self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
     }
     
     // MARK: - URL Request
     
-    func urlRequest(url: URL, for currentURLRequest: Int){
-        let session = URLSession(configuration: .default)
+    func fetchDataListFrom(url: URL, forRequest currentURLRequest: Int){
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.model.currectURLSession = session.dataTask(with: url) { data, response, error in
+            
+            URLSessionModel.urlRequest(from: url)
+            { (result: Result<ComicsMarvelData, DataError>) in
                 guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
-                guard error == nil else{ print("Error occured during url request: \(error!)"); return }
-                if let data = data{
-                    self?.model.processDataForComicsRequest(data)
-                } else{
-                    print("No Data received from the Server")
-                    if let response = response{ print(response) }
-                }
-                DispatchQueue.main.async {
-                    if let list = self?.model.comicsList{
-                        if !list.isEmpty{
+                switch result{
+                case .failure(let error): print(error)
+                case .success(let container):
+                    if let array = container.data?.results { self?.listForTableView.append(contentsOf: array)}
+                    if let numberOfRecords = container.data?.total{ self?.model.totalRecordsCount = numberOfRecords}
+                    DispatchQueue.main.async {
+                        if !(self?.listForTableView.isEmpty ?? false){
                             self?.tableView.reloadData()
-                            self?.downloadImage(for: (self?.model.currentURLRequestIndex)!)
+                            self?.fetchImages(forRequest: currentURLRequest)
                         }else{
-                            self?.showInformation()}
+                            self?.showInformation()
+                        }
+                        self?.model.additionalRequestInProcess = false
                     }
-                    self?.model.additionalRequestInProcess = false
-                    
                 }
             }
-            self?.model.currectURLSession!.resume()
         }
     }
     
-    func downloadImage(for currentURLRequest: Int) {
-        loop: for index in model.requestOffset...model.comicsList.count-1{
+    func fetchImages(forRequest currentURLRequest: Int){
+        for index in model.requestOffset...listForTableView.count-1{
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                if let url = self?.model.comicsList[index].thumbnail?.url{
-                    let download = URLSession(configuration: .default)
-                    download.dataTask(with: url, completionHandler: {data, response, error in
+                
+                if let url = self?.listForTableView[index].thumbnail?.url{
+                    URLSessionModel.imageRequest(from: url){ (result: Result<Data, DataError>) in
                         guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
-                        guard error == nil else{ print("Error occured during url request: \(error!)"); return }
-                        if let data = data{
-                            if let list = self?.model.comicsList{
-                                guard list.indices.contains(index) else { return }
-                                self?.model.comicsList[index].icon = data
+                        switch result{
+                        case .failure(let error): print(error)
+                        case .success(let image):
+                            self?.listForTableView[index].icon = image
+                            DispatchQueue.main.async {
+                                self?.tableView.reloadData()
                             }
                         }
-                        DispatchQueue.main.async {
-                            self?.tableView.reloadData()
-                        }
-                    }).resume()
+                    }
                 }
             }
         }
@@ -72,17 +68,17 @@ class ComicsDetailsTableViewController: UITableViewController {
     // MARK: - Table view delegate
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return model.comicsList.count
+        return listForTableView.count
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if model.additionalDataIsAvailable && indexPath.row == model.comicsList.count-1, !model.additionalRequestInProcess {
+        if model.additionalDataIsAvailable && indexPath.row == listForTableView.count-1, !model.additionalRequestInProcess {
             self.model.updateOffsetForRequest()
-            self.urlRequest(url: model.urlForRequest, for: model.currentURLRequestIndex)
+            self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
             self.model.additionalRequestInProcess = true
         }
         let cell = tableView.dequeueReusableCell(withIdentifier: "ComicsCell", for: indexPath)
-        let listItem = model.comicsList[indexPath.row]
+        let listItem = listForTableView[indexPath.row]
         cell.textLabel?.text = listItem.title
         if let price = listItem.prices?.first?.price{
             if price == 0.0{
@@ -100,7 +96,7 @@ class ComicsDetailsTableViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let comics = model.comicsList[indexPath.row]
+        let comics = listForTableView[indexPath.row]
         performSegue(withIdentifier: "ComicsImage", sender: comics)
     }
     

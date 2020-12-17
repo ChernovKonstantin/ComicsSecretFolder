@@ -17,6 +17,8 @@
 		172775CE258507C4009F5BF5 /* ComicsDetailsTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172775CD258507C4009F5BF5 /* ComicsDetailsTableViewController.swift */; };
 		172775D125850B45009F5BF5 /* CharacterSearchTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172775D025850B45009F5BF5 /* CharacterSearchTableViewController.swift */; };
 		172775DB2585177D009F5BF5 /* ComicsPrice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172775DA2585177D009F5BF5 /* ComicsPrice.swift */; };
+		17A93963258BD4DE00A2D66A /* URLSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A93962258BD4DE00A2D66A /* URLSessionModel.swift */; };
+		17A93966258BD4F800A2D66A /* DataError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A93965258BD4F800A2D66A /* DataError.swift */; };
 		17CC462125838CDE004FC5AD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17CC462025838CDE004FC5AD /* AppDelegate.swift */; };
 		17CC462325838CDE004FC5AD /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17CC462225838CDE004FC5AD /* SceneDelegate.swift */; };
 		17CC462825838CDE004FC5AD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 17CC462625838CDE004FC5AD /* Main.storyboard */; };
@@ -41,6 +43,8 @@
 		172775CD258507C4009F5BF5 /* ComicsDetailsTableViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicsDetailsTableViewController.swift; sourceTree = "<group>"; };
 		172775D025850B45009F5BF5 /* CharacterSearchTableViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterSearchTableViewController.swift; sourceTree = "<group>"; };
 		172775DA2585177D009F5BF5 /* ComicsPrice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicsPrice.swift; sourceTree = "<group>"; };
+		17A93962258BD4DE00A2D66A /* URLSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSessionModel.swift; sourceTree = "<group>"; };
+		17A93965258BD4F800A2D66A /* DataError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataError.swift; sourceTree = "<group>"; };
 		17CC461D25838CDE004FC5AD /* ComicsSecretFolder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ComicsSecretFolder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		17CC462025838CDE004FC5AD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		17CC462225838CDE004FC5AD /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -98,6 +102,15 @@
 			path = ComicsContainer;
 			sourceTree = "<group>";
 		};
+		17A93968258BD52B00A2D66A /* URLSession */ = {
+			isa = PBXGroup;
+			children = (
+				17A93962258BD4DE00A2D66A /* URLSessionModel.swift */,
+				17A93965258BD4F800A2D66A /* DataError.swift */,
+			);
+			path = URLSession;
+			sourceTree = "<group>";
+		};
 		17CC461425838CDE004FC5AD = {
 			isa = PBXGroup;
 			children = (
@@ -124,6 +137,7 @@
 				172775C9258506CD009F5BF5 /* CreatorSearchTableViewController.swift */,
 				172775CD258507C4009F5BF5 /* ComicsDetailsTableViewController.swift */,
 				17D28CB32586427E0078FB47 /* ComicsImageViewController.swift */,
+				17A93968258BD52B00A2D66A /* URLSession */,
 				17CC46472583B7B9004FC5AD /* Image.swift */,
 				172775D425850BFD009F5BF5 /* CreatorContainer */,
 				172775D625850C0E009F5BF5 /* CharacterContainer */,
@@ -224,10 +238,12 @@
 				172775AF2584ED07009F5BF5 /* Comics.swift in Sources */,
 				172775AB2584EA63009F5BF5 /* CreatorDataContainer.swift in Sources */,
 				172775B52584F8EB009F5BF5 /* ComicsMarvelData.swift in Sources */,
+				17A93966258BD4F800A2D66A /* DataError.swift in Sources */,
 				172775D125850B45009F5BF5 /* CharacterSearchTableViewController.swift in Sources */,
 				172775CA258506CD009F5BF5 /* CreatorSearchTableViewController.swift in Sources */,
 				172775BC2585002B009F5BF5 /* FetchingData.swift in Sources */,
 				17CC463F2583B74C004FC5AD /* CharacterMarvelData.swift in Sources */,
+				17A93963258BD4DE00A2D66A /* URLSessionModel.swift in Sources */,
 				17CC462325838CDE004FC5AD /* SceneDelegate.swift in Sources */,
 				17D28CB42586427E0078FB47 /* ComicsImageViewController.swift in Sources */,
 				17CC46452583B775004FC5AD /* Character.swift in Sources */,

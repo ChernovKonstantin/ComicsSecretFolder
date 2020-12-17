@@ -10,12 +10,6 @@ import CryptoKit
 
 class FetchingData {
     
-    lazy var charactersList = [Character]()
-    lazy var creatorsList = [Creator]()
-    lazy var comicsList = [Comics]()
-    
-    var currectURLSession: URLSessionDataTask?
-    
     private let basicUrl = "https://gateway.marvel.com:443/v1/public/"
     private var timestamp = NSDate().timeIntervalSince1970
     
@@ -26,7 +20,7 @@ class FetchingData {
     private var requestLimit = 40
     private(set) var requestOffset = 0
     var searchingOption: ComicsSearchingPropetries?
-    private(set) var totalRecordsCount = 0
+    var totalRecordsCount = 0
     var searchingParameterValue = ""
     var searchingParameterValueForComics = ""
     var additionalRequestInProcess = false
@@ -65,42 +59,6 @@ class FetchingData {
         currentURLRequestIndex += 1
         requestOffset = 0
         totalRecordsCount = 0
-    }
-    
-    func processDataForCharacterRequest(_ data: Data){
-        let decoder = JSONDecoder()
-        if let jsonList = try? decoder.decode(CharacterMarvelData.self, from: data){
-            if let dataList = jsonList.data?.results{
-                charactersList.append(contentsOf: dataList)
-            }
-            if let recordsCounter = jsonList.data?.total{
-                totalRecordsCount = recordsCounter
-            }
-        }
-    }
-    
-    func processDataForCreatorRequest(_ data: Data){
-        let decoder = JSONDecoder()
-        if let jsonList = try? decoder.decode(CreatorMarvelData.self, from: data){
-            if let dataList = jsonList.data?.results{
-                creatorsList.append(contentsOf: dataList)
-            }
-            if let recordsCounter = jsonList.data?.total{
-                totalRecordsCount = recordsCounter
-            }
-        }
-    }
-    
-    func processDataForComicsRequest(_ data: Data){
-        let decoder = JSONDecoder()
-        if let jsonList = try? decoder.decode(ComicsMarvelData.self, from: data){
-            if let dataList = jsonList.data?.results{
-                comicsList.append(contentsOf: dataList)
-            }
-            if let recordsCounter = jsonList.data?.total{
-                totalRecordsCount = recordsCounter                
-            }
-        }
     }
 }
 

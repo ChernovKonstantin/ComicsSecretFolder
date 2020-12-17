@@ -10,6 +10,7 @@ import UIKit
 class CharacterSearchTableViewController: UITableViewController, UISearchBarDelegate {
     
     var model = FetchingData()
+    var listForTableView = [Character]()
     
     @IBOutlet weak var searchBar: UISearchBar!
     
@@ -20,51 +21,41 @@ class CharacterSearchTableViewController: UITableViewController, UISearchBarDele
     
     // MARK: - URL Request
     
-    func urlRequest(url: URL, for currentURLRequest: Int){
-        let session = URLSession(configuration: .default)
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.model.currectURLSession = session.dataTask(with: url) { data, response, error in
-                guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
-                guard error == nil else{ print("Error occured during url request: \(error!)"); return }
-                if let data = data{
-                    self?.model.processDataForCharacterRequest(data)
-                } else{
-                    print("No Data received from the Server")
-                    if let response = response{ print(response) }
-                }
+    func fetchDataListFrom(url: URL, forRequest currentURLRequest: Int){
+        URLSessionModel.urlRequest(from: url)
+        { (result: Result<CharacterMarvelData, DataError>) in
+            guard currentURLRequest == self.model.currentURLRequestIndex else { return }
+            switch result{
+            case .failure(let error): print(error)
+            case .success(let container):
+                if let array = container.data?.results { self.listForTableView.append(contentsOf: array)}
+                if let numberOfRecords = container.data?.total{ self.model.totalRecordsCount = numberOfRecords}
                 DispatchQueue.main.async {
-                    if let list = self?.model.charactersList{
-                        if !list.isEmpty{
-                            self?.tableView.reloadData()
-                            self?.downloadImage(for: (self?.model.currentURLRequestIndex)!)
-                        }else{
-                            self?.showInformation()}
+                    if !self.listForTableView.isEmpty{
+                        self.tableView.reloadData()
+                        self.fetchImages(forRequest: currentURLRequest)
+                    }else{
+                        self.showInformation()
                     }
-                    self?.model.additionalRequestInProcess = false
+                    self.model.additionalRequestInProcess = false
                 }
             }
-            self?.model.currectURLSession!.resume()
         }
     }
     
-    func downloadImage(for currentURLRequest: Int) {
-        for index in model.requestOffset...model.charactersList.count-1{
-            DispatchQueue.global(qos: .userInitiated).async {[weak self] in
-                if let url = self?.model.charactersList[index].thumbnail?.url{
-                    let download = URLSession(configuration: .default)
-                    download.dataTask(with: url, completionHandler: {data, response, error in
-                        guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
-                        guard error == nil else{ print("Error occured during url request: \(error!)"); return }
-                        if let data = data{
-                            if let list = self?.model.charactersList{
-                                guard list.indices.contains(index) else { return }
-                                self?.model.charactersList[index].icon = data
-                            }
-                        }
+    func fetchImages(forRequest currentURLRequest: Int){
+        for index in model.requestOffset...listForTableView.count-1{
+            if let url = self.listForTableView[index].thumbnail?.url{
+                URLSessionModel.imageRequest(from: url){ (result: Result<Data, DataError>) in
+                    guard currentURLRequest == self.model.currentURLRequestIndex else { return }
+                    switch result{
+                    case .failure(let error): print(error)
+                    case .success(let image):
+                        self.listForTableView[index].icon = image
                         DispatchQueue.main.async {
-                            self?.tableView.reloadData()
+                            self.tableView.reloadData()
                         }
-                    }).resume()
+                    }
                 }
             }
         }
@@ -73,17 +64,17 @@ class CharacterSearchTableViewController: UITableViewController, UISearchBarDele
     // MARK: - Table view delegate
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return model.charactersList.count
+        return listForTableView.count
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if model.additionalDataIsAvailable, indexPath.row == model.charactersList.count-1, !model.additionalRequestInProcess {
+        if model.additionalDataIsAvailable, indexPath.row == listForTableView.count-1, !model.additionalRequestInProcess {
             self.model.updateOffsetForRequest()
-            self.urlRequest(url: model.urlForRequest, for: model.currentURLRequestIndex)
+            self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
             self.model.additionalRequestInProcess = true
         }
         let cell = tableView.dequeueReusableCell(withIdentifier: "CharacterCell", for: indexPath)
-        let listItem = model.charactersList[indexPath.row]
+        let listItem = listForTableView[indexPath.row]
         cell.textLabel?.text = listItem.name
         if let image = listItem.icon {
             cell.imageView?.image = UIImage(data: image)
@@ -94,7 +85,7 @@ class CharacterSearchTableViewController: UITableViewController, UISearchBarDele
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let character = model.charactersList[indexPath.row]
+        let character = listForTableView[indexPath.row]
         model.searchingParameterValueForComics = String(character.id!)
         performSegue(withIdentifier: "ByCharacter", sender: character)
     }
@@ -104,14 +95,13 @@ class CharacterSearchTableViewController: UITableViewController, UISearchBarDele
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         if let text = searchBar.text{
             model.newSearch()
-            if !model.charactersList.isEmpty{
-                model.charactersList.removeAll()
+            if !listForTableView.isEmpty{
+                listForTableView.removeAll()
                 tableView.reloadData()
             }
-            searchBar.resignFirstResponder()
+            //searchBar.resignFirstResponder()
             model.searchingParameterValue = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "%20")
-            if model.currectURLSession != nil { model.currectURLSession!.cancel() }
-            self.urlRequest(url: model.urlForRequest, for: model.currentURLRequestIndex)
+            self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
         }
     }
     

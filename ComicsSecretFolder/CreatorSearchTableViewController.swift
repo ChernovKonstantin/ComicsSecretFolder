@@ -10,6 +10,7 @@ import UIKit
 class CreatorSearchTableViewController: UITableViewController, UISearchBarDelegate {
     
     var model = FetchingData()
+    var listForTableView = [Creator]()
     
     @IBOutlet weak var searchBar: UISearchBar!
     
@@ -20,51 +21,42 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     
     // MARK: - URL Request
     
-    func urlRequest(url: URL, for currentURLRequest: Int){
-        let session = URLSession(configuration: .default)
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.model.currectURLSession = session.dataTask(with: url) { data, response, error in
-                guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
-                guard error == nil else{ print("Error occured during url request: \(error!)"); return }
-                if let data = data{
-                    self?.model.processDataForCreatorRequest(data)
-                } else{
-                    print("No Data received from the Server")
-                    if let response = response{ print(response) }
-                }
+    func fetchDataListFrom(url: URL, forRequest currentURLRequest: Int){
+        URLSessionModel.urlRequest(from: url)
+        { (result: Result<CreatorMarvelData, DataError>) in
+            guard currentURLRequest == self.model.currentURLRequestIndex else { return }
+            switch result{
+            case .failure(let error): print(error)
+            case .success(let container):
+                if let array = container.data?.results { self.listForTableView.append(contentsOf: array)}
+                if let numberOfRecords = container.data?.total{ self.model.totalRecordsCount = numberOfRecords}
                 DispatchQueue.main.async {
-                    if let list = self?.model.creatorsList{
-                        if !list.isEmpty{
-                            self?.tableView.reloadData()
-                            self?.downloadImage(for: (self?.model.currentURLRequestIndex)!)
-                        }else{
-                            self?.showInformation()}
+                    if !self.listForTableView.isEmpty{
+                        self.tableView.reloadData()
+                        self.fetchImages(forRequest: currentURLRequest)
+                    }else{
+                        self.showInformation()
                     }
-                    self?.model.additionalRequestInProcess = false
+                    self.model.additionalRequestInProcess = false
                 }
             }
-            self?.model.currectURLSession!.resume()
         }
+        
     }
     
-    func downloadImage(for currentURLRequest: Int) {
-        for index in model.requestOffset...model.creatorsList.count-1{
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                if let url = self?.model.creatorsList[index].thumbnail?.url{
-                    let download = URLSession(configuration: .default)
-                    download.dataTask(with: url, completionHandler: {data, response, error in
-                        guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
-                        guard error == nil else{ print("Error occured during url request: \(error!)"); return }
-                        if let data = data{
-                            if let list = self?.model.creatorsList{
-                                guard list.indices.contains(index) else { return }
-                                self?.model.creatorsList[index].icon = data
-                            }
-                        }
+    func fetchImages(forRequest currentURLRequest: Int){
+        for index in model.requestOffset...listForTableView.count-1{
+            if let url = self.listForTableView[index].thumbnail?.url{
+                URLSessionModel.imageRequest(from: url){ (result: Result<Data, DataError>) in
+                    guard currentURLRequest == self.model.currentURLRequestIndex else { return }
+                    switch result{
+                    case .failure(let error): print(error)
+                    case .success(let image):
+                        self.listForTableView[index].icon = image
                         DispatchQueue.main.async {
-                            self?.tableView.reloadData()
+                            self.tableView.reloadData()
                         }
-                    }).resume()
+                    }
                 }
             }
         }
@@ -73,17 +65,17 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     // MARK: - Table view delegate
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return model.creatorsList.count
+        return listForTableView.count
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if model.additionalDataIsAvailable, indexPath.row == model.creatorsList.count-1, !model.additionalRequestInProcess {
+        if model.additionalDataIsAvailable, indexPath.row == listForTableView.count-1, !model.additionalRequestInProcess {
             self.model.updateOffsetForRequest()
-            self.urlRequest(url: model.urlForRequest, for: model.currentURLRequestIndex)
+            self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
             self.model.additionalRequestInProcess = true
         }
         let cell = tableView.dequeueReusableCell(withIdentifier: "CreatorCell", for: indexPath)
-        let listItem = model.creatorsList[indexPath.row]
+        let listItem = listForTableView[indexPath.row]
         cell.textLabel?.text = listItem.fullName
         if let image = listItem.icon {
             cell.imageView?.image = UIImage(data: image)
@@ -94,7 +86,7 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let creator = model.creatorsList[indexPath.row]
+        let creator = listForTableView[indexPath.row]
         model.searchingParameterValueForComics = String(creator.id!)
         performSegue(withIdentifier: "ByCreator", sender: creator)
     }
@@ -104,14 +96,13 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         if let text = searchBar.text{
             self.model.newSearch()
-            if !model.creatorsList.isEmpty{
-                model.creatorsList.removeAll()
+            if !listForTableView.isEmpty{
+                listForTableView.removeAll()
                 self.tableView.reloadData()
             }
-            searchBar.resignFirstResponder()
+            //searchBar.resignFirstResponder()
             model.searchingParameterValue = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "%20")
-            if model.currectURLSession != nil { model.currectURLSession!.cancel() }
-            self.urlRequest(url: model.urlForRequest, for: model.currentURLRequestIndex)
+            self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
         }
     }
     
