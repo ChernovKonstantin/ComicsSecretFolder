@@ -9,22 +9,19 @@ import UIKit
 
 class CreatorSearchTableViewController: UITableViewController, UISearchBarDelegate {
     
-    var model = FetchingData()
+    var model = FetchingData(searching: .forCreators)
     var listForTableView = [Creator]()
     
     @IBOutlet weak var searchBar: UISearchBar!
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        model.searchingOption = .forCreators
     }
     
     // MARK: - URL Request
     
-    func fetchDataListFrom(url: URL, forRequest currentURLRequest: Int){
-        URLSessionModel.urlRequest(from: url)
-        { (result: Result<CreatorMarvelData, DataError>) in
-            guard currentURLRequest == self.model.currentURLRequestIndex else { return }
+    func fetchDataList(forRequest currentURLRequest: Int){
+        model.downloadData(forRequest: currentURLRequest) { (result: Result<CreatorMarvelData, DataError>) in
             switch result{
             case .failure(let error): print(error)
             case .success(let container):
@@ -41,20 +38,17 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
                 }
             }
         }
-        
     }
     
     func fetchImages(forRequest currentURLRequest: Int){
         for index in model.requestOffset...listForTableView.count-1{
             if let url = self.listForTableView[index].thumbnail?.url{
-                URLSessionModel.imageRequest(from: url){ (result: Result<Data, DataError>) in
-                    guard currentURLRequest == self.model.currentURLRequestIndex else { return }
-                    switch result{
-                    case .failure(let error): print(error)
-                    case .success(let image):
-                        self.listForTableView[index].icon = image
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
+                    if let image = try? Data(contentsOf: url){
+                        self?.listForTableView[index].icon = image
                         DispatchQueue.main.async {
-                            self.tableView.reloadData()
+                            self?.tableView.reloadData()
                         }
                     }
                 }
@@ -71,7 +65,7 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if model.additionalDataIsAvailable, indexPath.row == listForTableView.count-1, !model.additionalRequestInProcess {
             self.model.updateOffsetForRequest()
-            self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
+            self.fetchDataList(forRequest: model.currentURLRequestIndex)
             self.model.additionalRequestInProcess = true
         }
         let cell = tableView.dequeueReusableCell(withIdentifier: "CreatorCell", for: indexPath)
@@ -100,9 +94,9 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
                 listForTableView.removeAll()
                 self.tableView.reloadData()
             }
-            //searchBar.resignFirstResponder()
+            searchBar.resignFirstResponder()
             model.searchingParameterValue = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "%20")
-            self.fetchDataListFrom(url: model.urlForRequest, forRequest: model.currentURLRequestIndex)
+            self.fetchDataList(forRequest: model.currentURLRequestIndex)
         }
     }
     

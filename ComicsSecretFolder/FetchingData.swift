@@ -10,21 +10,31 @@ import CryptoKit
 
 class FetchingData {
     
+    var searchingOption: SearchingPropetries?
+    
     private let basicUrl = "https://gateway.marvel.com:443/v1/public/"
     private var timestamp = NSDate().timeIntervalSince1970
     
     private let publicKey = "928054e701cedf1af1479e0c91a10e3a"
     private let privateKey = "671a48ae623069610ee89320f6833ff74b9646ce"
     private lazy var hash = "\(timestamp)\(privateKey)\(publicKey)".MD5
+    
     private(set) var currentURLRequestIndex = 0
-    private var requestLimit = 40
+    private var requestLimit = 30
     private(set) var requestOffset = 0
-    var searchingOption: ComicsSearchingPropetries?
     var totalRecordsCount = 0
     var searchingParameterValue = ""
     var searchingParameterValueForComics = ""
     var additionalRequestInProcess = false
     
+    
+    
+    init() {
+    }
+    
+    init(searching type: SearchingPropetries) {
+        self.searchingOption = type
+    }
     var urlForRequest: URL{
         switch searchingOption {
         case .forCharacters:
@@ -39,7 +49,7 @@ class FetchingData {
         }
     }
     
-    enum ComicsSearchingPropetries{
+    enum SearchingPropetries{
         case forCharacters
         case forCreators
         case comicsByCharacterID
@@ -48,7 +58,7 @@ class FetchingData {
     
     var additionalDataIsAvailable: Bool
     {
-        totalRecordsCount > (requestOffset + 39)
+        totalRecordsCount > (requestOffset + (requestLimit-1))
     }
     
     func updateOffsetForRequest(){
@@ -60,9 +70,21 @@ class FetchingData {
         requestOffset = 0
         totalRecordsCount = 0
     }
+    
+    func downloadData <R: Decodable> (forRequest currentURLRequest: Int, completion: @escaping (Result<R, DataError>) -> Void) {
+        URLSessionModel.urlRequest(from: self.urlForRequest)
+        { (result: Result<R, DataError>) in
+            guard currentURLRequest == self.currentURLRequestIndex else { return }
+            switch result{
+            case .success(let container): completion(.success(container))
+            case .failure(let error): completion(.failure(error))
+            }
+        }
+    }
 }
 
 //MARK: - md5 encoding extension
+
 extension String {
     fileprivate var MD5: String {
         let computed = Insecure.MD5.hash(data: self.data(using: .utf8)!)
