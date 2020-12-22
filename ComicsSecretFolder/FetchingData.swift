@@ -26,8 +26,7 @@ class FetchingData {
     var searchingParameterValue = ""
     var searchingParameterValueForComics = ""
     var additionalRequestInProcess = false
-    
-    
+    private(set) var acceptableChars = "abcdefghijklmnopqrstuvwxyz- "
     
     init() {
     }
@@ -35,7 +34,8 @@ class FetchingData {
     init(searching type: SearchingPropetries) {
         self.searchingOption = type
     }
-    var urlForRequest: URL{
+    
+    private var urlForRequest: URL{
         switch searchingOption {
         case .forCharacters:
             return URL(string: "\(basicUrl)characters?nameStartsWith=\(searchingParameterValue)&limit=\(requestLimit)&offset=\(requestOffset)&ts=\(timestamp)&apikey=\(publicKey)&hash=\(hash)")!
@@ -71,14 +71,26 @@ class FetchingData {
         totalRecordsCount = 0
     }
     
-    func downloadData <R: Decodable> (forRequest currentURLRequest: Int, completion: @escaping (Result<R, DataError>) -> Void) {
+    func downloadData <R: Codable> (forRequest currentURLRequest: Int, completion: @escaping (Result<[R], Error>) -> Void) {
         URLSessionModel.urlRequest(from: self.urlForRequest)
-        { (result: Result<R, DataError>) in
+        { (result: Result<MarvelData<R>, DataError>) in
             guard currentURLRequest == self.currentURLRequestIndex else { return }
             switch result{
-            case .success(let container): completion(.success(container))
             case .failure(let error): completion(.failure(error))
+            case .success(let container):
+                if let data = container.data?.results{
+                    self.additionalRequestInProcess = false
+                    self.totalRecordsCount = container.data?.total ?? 0
+                    completion(.success(data))
+                }
             }
+        }
+    }
+    
+    func fetchImage(forCell index: Int, forRequest: Int, url: URL, completion: @escaping (Data) -> Void){
+        if let data = try? Data(contentsOf: url){
+            guard forRequest == self.currentURLRequestIndex else { return }
+            completion(data)
         }
     }
 }

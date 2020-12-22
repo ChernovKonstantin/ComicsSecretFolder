@@ -12,6 +12,10 @@ class ComicsDetailsTableViewController: UITableViewController {
     var model = FetchingData()
     var listForTableView = [Comics]()
     
+    deinit {
+        print("DONE!!!!")
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         self.fetchDataList(forRequest: model.currentURLRequestIndex)
@@ -20,31 +24,30 @@ class ComicsDetailsTableViewController: UITableViewController {
     // MARK: - URL Request
     
     func fetchDataList(forRequest currentURLRequest: Int){
-        model.downloadData(forRequest: currentURLRequest) { (result: Result<ComicsMarvelData, DataError>) in
-            switch result{
-            case .failure(let error): print(error)
-            case .success(let container):
-                if let array = container.data?.results { self.listForTableView.append(contentsOf: array)}
-                if let numberOfRecords = container.data?.total{ self.model.totalRecordsCount = numberOfRecords}
-                DispatchQueue.main.async {
-                    if !self.listForTableView.isEmpty{
-                        self.tableView.reloadData()
-                        self.fetchImages(forRequest: currentURLRequest)
-                    }else{
-                        self.showInformation()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.model.downloadData(forRequest: currentURLRequest){ (result: Result<[Comics], Error>) in
+                switch result{
+                case .failure(let error): print(error)
+                case .success(let array): self?.listForTableView.append(contentsOf: array)
+                    DispatchQueue.main.async {
+                        if (self?.listForTableView.isEmpty) != nil{
+                            self?.tableView.reloadData()
+                            self?.fetchImages(forRequest: currentURLRequest)
+                        }else{
+                            self?.showInformation()
+                        }
                     }
-                    self.model.additionalRequestInProcess = false
                 }
             }
         }
     }
     
     func fetchImages(forRequest currentURLRequest: Int){
-        for index in model.requestOffset...listForTableView.count-1{
-            if let url = self.listForTableView[index].thumbnail?.url{
+        for index in listForTableView.indices{
+            guard listForTableView[index].icon == nil else { continue }
+            if let url = listForTableView[index].thumbnail?.url{
                 DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                    if let image = try? Data(contentsOf: url){
-                        guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
+                    self?.model.fetchImage(forCell: index, forRequest: currentURLRequest, url: url){image in
                         self?.listForTableView[index].icon = image
                         DispatchQueue.main.async {
                             self?.tableView.reloadData()

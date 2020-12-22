@@ -21,12 +21,10 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     // MARK: - URL Request
     
     func fetchDataList(forRequest currentURLRequest: Int){
-        model.downloadData(forRequest: currentURLRequest) { (result: Result<CreatorMarvelData, DataError>) in
+        model.downloadData(forRequest: currentURLRequest){ (result: Result<[Creator], Error>) in
             switch result{
             case .failure(let error): print(error)
-            case .success(let container):
-                if let array = container.data?.results { self.listForTableView.append(contentsOf: array)}
-                if let numberOfRecords = container.data?.total{ self.model.totalRecordsCount = numberOfRecords}
+            case .success(let array): self.listForTableView.append(contentsOf: array)
                 DispatchQueue.main.async {
                     if !self.listForTableView.isEmpty{
                         self.tableView.reloadData()
@@ -34,22 +32,19 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
                     }else{
                         self.showInformation()
                     }
-                    self.model.additionalRequestInProcess = false
                 }
             }
         }
     }
     
     func fetchImages(forRequest currentURLRequest: Int){
-        for index in model.requestOffset...listForTableView.count-1{
-            if let url = self.listForTableView[index].thumbnail?.url{
-                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                    guard currentURLRequest == self?.model.currentURLRequestIndex else { return }
-                    if let image = try? Data(contentsOf: url){
-                        self?.listForTableView[index].icon = image
-                        DispatchQueue.main.async {
-                            self?.tableView.reloadData()
-                        }
+        for index in listForTableView.indices{
+            guard listForTableView[index].icon == nil else { continue }
+            if let url = listForTableView[index].thumbnail?.url{
+                model.fetchImage(forCell: index, forRequest: currentURLRequest, url: url){image in
+                    self.listForTableView[index].icon = image
+                    DispatchQueue.main.async {
+                        self.tableView.reloadData()
                     }
                 }
             }
@@ -95,7 +90,7 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
                 self.tableView.reloadData()
             }
             searchBar.resignFirstResponder()
-            model.searchingParameterValue = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "%20")
+            model.searchingParameterValue = text.filter({model.acceptableChars.contains($0.lowercased())}).trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "%20")
             self.fetchDataList(forRequest: model.currentURLRequestIndex)
         }
     }
