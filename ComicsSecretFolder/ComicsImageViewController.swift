@@ -9,6 +9,8 @@ import UIKit
 
 class ComicsImageViewController: UIViewController {
     
+    var model = FetchingData()
+    
     @IBOutlet weak var comicsImageView: UIImageView!
     @IBOutlet weak var spinner: UIActivityIndicatorView!
     
@@ -26,13 +28,14 @@ class ComicsImageViewController: UIViewController {
     func showImage(){
         spinner.startAnimating()
         if let url = imageURL{
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                if let image = try? Data(contentsOf: url){
+            model.fetchImage(forCell: 0, url: url){ data in
+                if let image = UIImage(data: data){
                     DispatchQueue.main.async {
-                        self?.comicsImageView.image = UIImage(data: image)
+                        self.comicsImageView.image = image
                     }
-                } else{
-                    self?.comicsImageView.image = UIImage(named: "noTitleImage")
+                }
+                else{
+                    self.comicsImageView.image = UIImage(named: "noTitleImage")
                 }
             }
         }

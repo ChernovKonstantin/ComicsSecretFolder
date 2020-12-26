@@ -20,15 +20,14 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     
     // MARK: - URL Request
     
-    func fetchDataList(forRequest currentURLRequest: Int){
-        model.downloadData(forRequest: currentURLRequest){ (result: Result<[Creator], Error>) in
+    func fetchDataList(){
+        model.downloadData(){ (result: Result<[Creator], Error>) in
             switch result{
             case .failure(let error): print(error)
             case .success(let array): self.listForTableView.append(contentsOf: array)
                 DispatchQueue.main.async {
                     if !self.listForTableView.isEmpty{
                         self.tableView.reloadData()
-                        self.fetchImages(forRequest: currentURLRequest)
                     }else{
                         self.showInformation()
                     }
@@ -37,15 +36,14 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
         }
     }
     
-    func fetchImages(forRequest currentURLRequest: Int){
-        for index in listForTableView.indices{
-            guard listForTableView[index].icon == nil else { continue }
-            if let url = listForTableView[index].thumbnail?.url{
-                model.fetchImage(forCell: index, forRequest: currentURLRequest, url: url){image in
-                    self.listForTableView[index].icon = image
-                    DispatchQueue.main.async {
-                        self.tableView.reloadData()
-                    }
+    func fetchImages(forCell index: Int){
+        guard listForTableView[index].icon == nil else { return }
+        if let url = listForTableView[index].thumbnail?.url{
+            model.fetchImage(forCell: index, url: url){image in
+                guard self.listForTableView.indices.contains(index) else { return }
+                self.listForTableView[index].icon = image
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
                 }
             }
         }
@@ -58,10 +56,8 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if model.additionalDataIsAvailable, indexPath.row == listForTableView.count-1, !model.additionalRequestInProcess {
-            self.model.updateOffsetForRequest()
-            self.fetchDataList(forRequest: model.currentURLRequestIndex)
-            self.model.additionalRequestInProcess = true
+        if model.additionalDataIsAvailable, indexPath.row == listForTableView.count-1 {
+            self.fetchDataList()
         }
         let cell = tableView.dequeueReusableCell(withIdentifier: "CreatorCell", for: indexPath)
         let listItem = listForTableView[indexPath.row]
@@ -70,6 +66,7 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
             cell.imageView?.image = UIImage(data: image)
         }else{
             cell.imageView?.image = UIImage(named: "noImage")
+            fetchImages(forCell: indexPath.row)
         }
         return cell
     }
@@ -91,7 +88,7 @@ class CreatorSearchTableViewController: UITableViewController, UISearchBarDelega
             }
             searchBar.resignFirstResponder()
             model.searchingParameterValue = text.filter({model.acceptableChars.contains($0.lowercased())}).trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "%20")
-            self.fetchDataList(forRequest: model.currentURLRequestIndex)
+            self.fetchDataList()
         }
     }
     

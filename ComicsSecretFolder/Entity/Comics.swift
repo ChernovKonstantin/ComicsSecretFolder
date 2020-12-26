@@ -8,7 +8,7 @@
 import Foundation
 
 struct Comics: Codable{
-//    let id: Int?
+    let id: Int?
     let title: String?
     let thumbnail: Image?
     var icon: Data?
